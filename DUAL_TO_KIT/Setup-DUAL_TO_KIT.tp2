@@ -1,0 +1,680 @@
+BACKUP ~DUAL_TO_KIT\backup~ 
+AUTHOR ~none~ 
+VERSION ~0.34~
+
+ALWAYS
+	OUTER_SPRINT	w ~[ %TAB%]*~
+	OUTER_SPRINT	u ~[ %TAB%]+~
+	OUTER_SPRINT	ln ~\(.*%WNL%\)*~
+	<<<<<<<< .../inlined.2da
+2DA V1.0
+****>>>>>>>>
+	<<<<<<<< .../inlined.lua
+>>>>>>>>
+	DEFINE_ACTION_FUNCTION	EE_CLASS_KIT_REF_LIST	BEGIN	OUTER_SET	READ_CAMPAIGN	= 0	OUTER_SPRINT classlist ~~	ACTION_CLEAR_ARRAY READ_CAMPAIGN
+		DEFINE_ACTION_MACRO	READ_CLASTEXT	BEGIN	ACTION_CLEAR_ARRAY	~FILE~
+			COPY_EXISTING	- ~%file%.2DA~	override	COUNT_2DA_COLS	cols	READ_2DA_ENTRIES_NOW	~FILE~	3
+				FOR	(i = 1; i < FILE; ++i)	BEGIN
+					TEXT_SPRINT	CLASSID EVAL ~%FILE_%i%_1%~		TEXT_SPRINT	KITID EVAL ~%FILE_%i%_2%~
+					TEXT_SPRINT	str_mix EVAL ~%FILE_%i%_5%~		TEXT_SPRINT	str_desc EVAL ~%FILE_%i%_4%~
+					PATCH_IF ~1~ STR_EQ EVAL ~%FILE_%i%_7%~	BEGIN
+						TEXT_SPRINT $fall(~%CLASSID%~ ~%KITID%~ ~%file%~) ~%str_mix%~
+						TEXT_SPRINT $fdes(~%CLASSID%~ ~%KITID%~ ~%file%~) ~%str_desc%~
+					END	ELSE	BEGIN
+						TEXT_SPRINT $mixed(~%CLASSID%~ ~%KITID%~ ~%file%~) ~%str_mix%~
+						TEXT_SPRINT $desc(~%CLASSID%~ ~%KITID%~ ~%file%~) ~%str_desc%~
+					END
+				END
+			IF_EXISTS
+		END
+		ACTION_CLEAR_ARRAY	mixed	ACTION_CLEAR_ARRAY	desc	ACTION_CLEAR_ARRAY	fall	ACTION_CLEAR_ARRAY	fdes
+		COPY_EXISTING	- ~CAMPAIGN.2DA~	override	COUNT_2DA_COLS	cols	READ_2DA_ENTRIES_NOW	~READ_CAMPAIGN~	cols	IF_EXISTS
+		OUTER_SPRINT	file ~CLASTEXT~	LAM	READ_CLASTEXT
+		OUTER_FOR	(k = 0; k < READ_CAMPAIGN; ++k)	BEGIN
+			OUTER_SPRINT	file	EVAL ~%READ_CAMPAIGN_%k%_30%~	LAM	READ_CLASTEXT	OUTER_SPRINT	$files(~%file%~) ~~
+		END
+		COPY_EXISTING	~BGEE.LUA~	~override\M_STRREF.LUA~	DELETE_BYTES	0	SOURCE_SIZE
+		OUTER_FOR	(c = 1; c < 22; ++c)	BEGIN
+			OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%[%c%] = {~
+			ACTION_PHP_EACH	mixed AS k => x	BEGIN
+				ACTION_IF	(~%c%~ STR_EQ ~%k%~) AND (~%k_2%~ STR_EQ ~CLASTEXT~)	BEGIN
+					OUTER_SPRINT	f ~CLASTEXT~
+					ACTION_IF	VARIABLE_IS_SET	$desc(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT d $desc(~%k%~ ~%k_1%~ ~%f%~)	END	ELSE	BEGIN	OUTER_SPRINT d ~nil~	END
+					ACTION_IF	VARIABLE_IS_SET	$fall(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT fm $fall(~%k%~ ~%k_1%~ ~%f%~)	END	ELSE	BEGIN	OUTER_SPRINT fm ~nil~	END
+					ACTION_IF	VARIABLE_IS_SET	$fdes(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT fd $fdes(~%k%~ ~%k_1%~ ~%f%~)	END	ELSE	BEGIN	OUTER_SPRINT fd ~nil~	END
+					ACTION_PHP_EACH	files AS f => null BEGIN
+						ACTION_IF	VARIABLE_IS_SET	$mixed(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT x EVAL ~%x%, %mixed_%k%_%k_1%_%f%%~	END	ELSE	BEGIN	OUTER_SPRINT x ~%x%, nil~	END
+						ACTION_IF	VARIABLE_IS_SET	$desc(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT d EVAL ~%d%, %desc_%k%_%k_1%_%f%%~	END	ELSE	BEGIN	OUTER_SPRINT d ~%d%, nil~	END
+						ACTION_IF	VARIABLE_IS_SET	$fall(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT fm EVAL ~%fm%, %fall_%k%_%k_1%_%f%%~	END	ELSE	BEGIN	OUTER_SPRINT fm ~%fm%, nil~	END
+						ACTION_IF	VARIABLE_IS_SET	$fdes(~%k%~ ~%k_1%~ ~%f%~) BEGIN	OUTER_SPRINT fd EVAL ~%fd%, %fdes_%k%_%k_1%_%f%%~	END	ELSE	BEGIN	OUTER_SPRINT fd ~%fd%, nil~	END
+					END
+					OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%%TAB%[%k_1%] = { {%x%}, {%d%}, {%fm%}, {%fd%}, },~
+				END
+			END
+			OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%},~
+		END
+		APPEND	~M_STRREF.lua~	~~~~~M_STRREF = {}%WNL%%TAB%M_STRREF.classKitStrRefList =%WNL%%TAB%{%classlist%%WNL%%TAB%}~~~~~
+	END
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	/*	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	*/
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	DEFINE_ACTION_FUNCTION	ADD_SPLPROT	INT_VAR	stat = 0	value = 0	relation = 0	new_row = ~-1~	RET	new_row		BEGIN
+	//	[0:<=][1:=][2:<][3:>][4:>=][5:!=][6:b<=][7:b>=][8:b=][9:b!=][10:b>][11:b<]
+		ACTION_IF	(stat > 278)	BEGIN	WARN	~SPLPROT.2DA - Stat out of Bounds.~	END
+		ACTION_IF	((stat != 259) AND (stat != 260) AND (relation > 11))	BEGIN	WARN	~SPLPROT.2DA - Relation out of Bounds.~	END
+		COPY_EXISTING ~SPLPROT.2DA~	override	COUNT_2DA_COLS	cols	READ_2DA_ENTRIES_NOW	READ	cols
+			FOR	(i = 0; i < READ; ++i)	BEGIN
+				PATCH_IF	(~%stat%~	STR_EQ EVAL ~%READ_%i%_1%~)	AND	(~%value%~	STR_EQ EVAL ~%READ_%i%_2%~)	AND	(~%relation%~	STR_EQ EVAL ~%READ_%i%_3%~)	BEGIN
+					SET	new_row = i	SET	i = READ
+				END
+			END
+			PATCH_IF (new_row = ~-1~)	BEGIN	FOR	(i = 0; i < READ; ++i)	BEGIN	PATCH_IF (~*~ STRING_EQUAL EVAL ~%READ_%i%_1%~)	BEGIN
+					SET	new_row = i	SET_2DA_ENTRY new_row 1 cols ~%stat%~	SET_2DA_ENTRY new_row 2 cols ~%value%~	SET_2DA_ENTRY new_row 3 cols ~%relation%~	SET	i = READ
+				END	END
+				PATCH_IF (new_row = ~-1~)	BEGIN	SET	new_row = READ	INSERT_2DA_ROW READ cols ~%new_row%		   %stat%		   %value%		   %relation%~	END
+			END
+		BUT_ONLY
+	END
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	/*	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	*/
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	DEFINE_ACTION_FUNCTION	~COMPONENT$$01~	BEGIN
+		LAF	EE_CLASS_KIT_REF_LIST	END
+		COPY_EXISTING	~UI.MENU~	override
+			REPLACE_TEXTUALLY	~\(currentChargenClass%w%=%w%nil\)~	~~~~~M_DCTKIT.addKitList(); \1~~~~~
+			REPLACE_TEXTUALLY	~\(createCharScreen:OnClassSelectButtonClick(chargen\.class\[currentChargenClass\]\.id)\)~
+			~~~~~\1%WNL%%TAB%%TAB%%TAB%%TAB%if chargen.class[currentChargenClass].kitID ~= nil then
+%TAB%%TAB%%TAB%%TAB%%TAB%createCharScreen:OnKitSelectButtonClick(chargen.class[currentChargenClass].kitID);
+%TAB%%TAB%%TAB%%TAB%else
+%TAB%%TAB%%TAB%%TAB%%TAB%createCharScreen:OnKitSelectButtonClick(M_DCTKIT.origKit);
+%TAB%%TAB%%TAB%%TAB%end~~~~~
+			REPLACE_TEXTUALLY	~~~~~\(name%w%'CHARGEN_CHOOSE_SPELLS'%ln%%w%clickable%u%lua%u%"createCharScreen:IsDoneButtonClickable(%w%)\)\(%ln%%w%name%w%'CHARGEN_MEMORIZE_MAGE'\)~~~~~
+			~~~~~\1 and M_DCTKIT.specSpellSelect()\3~~~~~
+		OUTER_SET	READ_CAMPAIGN	= 0
+		ACTION_DEFINE_ASSOCIATIVE_ARRAY	files	BEGIN
+			 ~ABDCDSRQ~ => 0	~CLSRCREQ~ => 0	~DUALCLAS~ => 0	~RACETEXT~ => 0	~ALIGNMNT~ => 0	~MGSRCREQ~ => 0 ~KITLIST~ => 3	~CLASTEXT~ => 3	~CAMPAIGN~ => 3
+		END
+		ACTION_PHP_EACH	files AS file => cols	BEGIN
+			COPY_EXISTING ~%file%.2da~	override
+				PATCH_IF	!cols	BEGIN	COUNT_2DA_COLS cols	END
+				READ_2DA_ENTRIES_NOW	~READ_%file%~	cols
+			BUT_ONLY	IF_EXISTS
+		END	OUTER_SET	NUM_KITS = READ_KITLIST - 1
+		
+		OUTER_SPRINT	classlist ~%WNL%%TAB%%TAB%%TAB%%TAB%'CLASTEXT.2DA',~
+		OUTER_FOR	(j = 1; j < NUM_KITS; ++j)	BEGIN
+			OUTER_SPRINT	$validlist(~%j%~) ~~
+			OUTER_SPRINT	$racelist(~%j%~) ~ 'RACETEXT.2DA',~	
+			OUTER_SPRINT	$alignlist(~%j%~) ~~
+		END
+		OUTER_SPRINT	$align(~1~) ~0x11~	OUTER_SPRINT	$align(~2~) ~0x12~	OUTER_SPRINT	$align(~3~) ~0x13~
+		OUTER_SPRINT	$align(~4~) ~0x21~	OUTER_SPRINT	$align(~5~) ~0x22~	OUTER_SPRINT	$align(~6~) ~0x23~
+		OUTER_SPRINT	$align(~7~) ~0x31~	OUTER_SPRINT	$align(~8~) ~0x32~	OUTER_SPRINT	$align(~9~) ~0x33~
+		
+		OUTER_FOR	(i = 2; i < READ_KITLIST; ++i)	BEGIN
+			OUTER_SET	KITID = (i - 1)
+			OUTER_SPRINT	KITNAME	$READ_KITLIST(~%i%~ ~1~)	ACTION_TO_UPPER	KITNAME
+			OUTER_SET	$name(~%KITNAME%~) = KITID
+			OUTER_SPRINT	$base(~%KITID%~) $READ_KITLIST(~%i%~ ~8~)
+			OUTER_SPRINT	$mixed(~%KITID%~) $READ_KITLIST(~%i%~ ~3~)
+			OUTER_SPRINT	$desc(~%KITID%~) $READ_KITLIST(~%i%~ ~4~)
+			OUTER_SPRINT	$kit(~%KITID%~) ~%KITNAME%~
+			OUTER_SPRINT	$label(~%KITID%~) ~%KITNAME%~
+		END
+		OUTER_FOR	(i = 0; i < READ_ABDCDSRQ; ++i)	BEGIN
+			OUTER_SPRINT KITNAME $READ_ABDCDSRQ(~%i%~ ~0~) ACTION_TO_UPPER	KITNAME
+			ACTION_IF	VARIABLE_IS_SET	$name(~%KITNAME%~)	BEGIN
+				OUTER_SET	KITID = $name(~%KITNAME%~)
+				OUTER_FOR	(j = 1; j < 7; ++j)	BEGIN	
+					OUTER_SET	$stat(~%KITID%~ ~%j%~) = $READ_ABDCDSRQ(~%i%~ ~%j%~)
+				END
+			END
+		END
+		OUTER_FOR	(i = 1; i < READ_CLASTEXT; ++i)	BEGIN
+			OUTER_SPRINT	CLASSID	$READ_CLASTEXT(~%i%~ ~1~)	OUTER_SPRINT	KITID		$READ_CLASTEXT(~%i%~ ~2~)
+			OUTER_SPRINT	MIXED		$READ_CLASTEXT(~%i%~ ~5~)	OUTER_SPRINT	FALLEN	$READ_CLASTEXT(~%i%~ ~7~)
+			ACTION_MATCH	KITID	WITH
+				16384 WHEN ~%FALLEN%~ STR_EQ ~0~	BEGIN
+					ACTION_MATCH	CLASSID	WITH
+						1 2 3 4 11 12	BEGIN
+							OUTER_SPRINT	$valid(~%CLASSID%~) ~%MIXED%~
+							OUTER_SPRINT	classlist ~%classlist% [%MIXED%] = %CLASSID%,~
+						END	DEFAULT
+					END
+				END	DEFAULT	ACTION_IF	!(~%FALLEN%~ STR_EQ ~0~)	BEGIN	OUTER_SPRINT	$fallen(~%KITID%~) $READ_CLASTEXT(~%i%~ ~4~)	END
+			END
+		END
+		OUTER_FOR	(i = 0; i < READ_CLSRCREQ; ++i)	BEGIN
+			OUTER_SPRINT KITNAME $READ_CLSRCREQ(~%i%~ ~0~) ACTION_TO_UPPER	KITNAME
+			ACTION_IF	VARIABLE_IS_SET	$name(~%KITNAME%~)	BEGIN
+				OUTER_SPRINT	KITID $name(~%KITNAME%~)
+				OUTER_FOR	(j = 1; j < 8; ++j)	BEGIN
+					OUTER_SPRINT	$racial(~%KITID%~ ~%j%~) $READ_CLSRCREQ(~%i%~ ~%j%~)
+				END
+			END
+		END
+		ACTION_DEFINE_ARRAY	dual BEGIN	0 2 3 1 4 11 12	END
+		OUTER_FOR	(i = 0; i < READ_DUALCLAS; ++i)	BEGIN
+			OUTER_SPRINT KITNAME $READ_DUALCLAS(~%i%~ ~0~) ACTION_TO_UPPER	KITNAME
+			ACTION_IF	VARIABLE_IS_SET	$name(~%KITNAME%~)	BEGIN
+				OUTER_SPRINT	KITID $name(~%KITNAME%~)
+				OUTER_FOR	(j = 1; j < 7; ++j)	BEGIN
+					OUTER_SPRINT	MIN	$READ_DUALCLAS(~%i%~ ~%j%~)
+					OUTER_SPRINT	tempstring EVAL $validlist(~%KITID%~)
+					OUTER_SET	k = $dual(~%j%~)
+					OUTER_SPRINT	$validlist(~%KITID%~) ~%tempstring%  [%k%] = %MIN%,~
+				END
+			END
+		END
+		OUTER_FOR	(i = 0; i < READ_RACETEXT; ++i)	BEGIN
+			ACTION_IF	IS_AN_INT	EVAL $READ_RACETEXT(~%i%~ ~4~) AND	IS_AN_INT	EVAL $READ_RACETEXT(~%i%~ ~1~)	BEGIN
+				OUTER_SET	RACEID	= $READ_RACETEXT(~%i%~ ~1~)
+				OUTER_SET	UPPERCASE	= $READ_RACETEXT(~%i%~ ~4~)
+				OUTER_FOR	(j = 1; j < NUM_KITS; ++j)	BEGIN
+					ACTION_IF	VARIABLE_IS_SET	$racial(~%j%~ ~%RACEID%~)	BEGIN
+						OUTER_SET	tempallow = $racial(~%j%~ ~%RACEID%~)
+						OUTER_SPRINT	tempstring EVAL $racelist(~%j%~)
+						OUTER_SPRINT	text $racelist(~%j%~)
+						OUTER_SPRINT	$racelist(~%j%~) ~%tempstring% [%UPPERCASE%] = %tempallow%,~
+					END
+				END
+			END
+		END
+		OUTER_FOR	(k = 0; k < READ_CAMPAIGN; ++k)	BEGIN
+			ACTION_IF	VARIABLE_IS_SET	EVAL ~READ_CAMPAIGN_%k%_31~	BEGIN
+				OUTER_SPRINT	CLASSFILE	EVAL ~%READ_CAMPAIGN_%k%_30%~
+				ACTION_IF	STRING_LENGTH ~%CLASSFILE%~ < 8	BEGIN	OUTER_SPRINT t ~%TAB%~	END	ELSE	BEGIN	OUTER_SPRINT t ~~	END
+				OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%%TAB%%TAB%'%CLASSFILE%.2DA'%t%,~
+				COPY_EXISTING	~%CLASSFILE%.2DA~	override
+					READ_2DA_ENTRIES_NOW	~READ_%CLASSFILE%~	3
+					FOR	(i = 1; i < EVAL ~READ_%CLASSFILE%~; ++i)	BEGIN
+						READ_2DA_ENTRY_FORMER ~READ_%CLASSFILE%~	i 1 CLASSID
+						READ_2DA_ENTRY_FORMER ~READ_%CLASSFILE%~	i 2 KITID
+						READ_2DA_ENTRY_FORMER ~READ_%CLASSFILE%~	i 5 MIXED
+						READ_2DA_ENTRY_FORMER	~READ_%CLASSFILE%~	i 7 FALLEN
+						PATCH_MATCH	KITID	WITH	16384 WHEN FALLEN = 0	BEGIN
+							PATCH_MATCH	CLASSID	WITH	1 2 3 4 11 12	BEGIN	TEXT_SPRINT classlist ~%classlist% [%MIXED%] = %CLASSID%,~	END	DEFAULT	END
+							END	DEFAULT
+						END
+					END
+				BUT_ONLY	IF_EXISTS
+				OUTER_SPRINT	RACEFILE	EVAL ~%READ_CAMPAIGN_%k%_31%~
+				ACTION_IF	STRING_LENGTH ~%RACEFILE%~ < 8	BEGIN	OUTER_SPRINT t ~%TAB%~	END	ELSE	BEGIN	OUTER_SPRINT t ~~	END
+				OUTER_FOR	(j = 1; j < NUM_KITS; ++j)	BEGIN
+					OUTER_SPRINT	tempstring EVAL $racelist(~%j%~)
+					OUTER_SPRINT	$racelist(~%j%~) ~%tempstring%%WNL%%TAB%%TAB%%TAB%%TAB%  '%RACEFILE%.2DA'%t%,~
+				END
+				COPY_EXISTING	~%RACEFILE%.2DA~	override
+					COUNT_2DA_COLS	cols
+					READ_2DA_ENTRIES_NOW	~READ_%RACE_FILE%~	cols
+					FOR	(i = 0; i < EVAL ~%READ_%RACE_FILE%%~; ++i)	BEGIN
+						READ_2DA_ENTRY_FORMER ~READ_%RACE_FILE%~	i 1 RACEID
+						READ_2DA_ENTRY_FORMER ~READ_%RACE_FILE%~	i 4 UPPERCASE
+						FOR	(j = 1; j < NUM_KITS; ++j)	BEGIN
+							PATCH_IF	VARIABLE_IS_SET	$racial(~%j%~ ~%RACEID%~)	BEGIN
+								SET	tempallow = $racial(~%j%~ ~%RACEID%~)
+								TEXT_SPRINT	tempstring EVAL $racelist(~%j%~)
+								TEXT_SPRINT	$racelist(~%j%~) ~%tempstring% [%UPPERCASE%] = %tempallow%,~
+							END
+						END
+					END
+				BUT_ONLY	IF_EXISTS
+			END
+		END
+		OUTER_FOR	(i = 0; i < READ_ALIGNMNT; ++i)	BEGIN
+			OUTER_SPRINT KITNAME EVAL ~%READ_ALIGNMNT_%i%_0%~ ACTION_TO_UPPER	KITNAME
+			ACTION_IF	VARIABLE_IS_SET	$name(~%KITNAME%~)	BEGIN
+				OUTER_SET	KITID = $name(~%KITNAME%~)
+				OUTER_FOR	(j = 1; j < 10; ++j)	BEGIN	
+					OUTER_SET	MIN	= EVAL ~%READ_ALIGNMNT_%i%_%j%%~
+			//		OUTER_SET k = $align(~%j%~)
+					OUTER_SPRINT	tempstring EVAL $alignlist(~%KITID%~)
+					OUTER_SPRINT	$alignlist(~%KITID%~) ~%tempstring%  %MIN%,~
+				END
+			END
+		END
+		OUTER_FOR	(i = 0; i < READ_MGSRCREQ; ++i)	BEGIN
+			OUTER_SPRINT KITNAME EVAL ~%READ_MGSRCREQ_%i%_0%~ ACTION_TO_UPPER	KITNAME
+			ACTION_IF	VARIABLE_IS_SET	$name(~%KITNAME%~)	BEGIN
+				OUTER_SET	KITID = $name(~%KITNAME%~)
+				OUTER_FOR	(j = 2; j < cols; ++j)	BEGIN
+					OUTER_SET k = j - 1
+					OUTER_SET	$racial(~%KITID%~ ~%k%~) = EVAL ~%READ_MGSRCREQ_%i%_%j%%~
+				END
+			END
+		END
+		ACTION_IF	kit_to_kit	BEGIN
+			OUTER_SPRINT	kit_to_kit	~M_DCTKIT.origClass = k;~
+		END	ELSE	BEGIN
+			OUTER_SPRINT	kit_to_kit	~abort = true;~
+		END
+		COPY	~.../inlined.lua~	~override\M_DCTKIT.lua~
+		APPEND	~M_DCTKIT.lua~
+~~~~~M_DCTKIT = {
+	str, dex, con, int, wis, cha, origClass, origKit,
+	alignment = function (n)
+		local list = {
+			[15729721] = 3,	[15729722] = 1,	[15729723] = 2, -- Lawful .... Evil, Good, Neutral
+			[15729758] = 6, [15729759] = 4,	[15729863] = 5, -- Neutral ... Evil, Good, Neutral
+			[15729542] = 9,	[15729543] = 7,	[15729544] = 8, -- Chaotic ... Evil, Good, Neutral
+		}	return list[n];
+	end,
+	specSpellSelect = function ()
+		local temp = true;
+		for k,v in pairs (chargen.choose_spell)	do
+			if spellBook[chargen.currentSpellLevelChoice][v.key].specialist then
+				temp = false;	if v.enabled or v.known then	return true;	end
+			end
+		end
+		return temp;
+	end,
+	sortKitList = function (a,b)
+		if a.id == b.id then
+			if (a.kitID ~= nil) and (a.kitID ~= 16384) then
+				if (b.kitID ~= nil) and (b.kitID ~= 16384) then
+					return a.kitID < b.kitID;
+				else
+					return false;
+				end
+			elseif b.kitID ~= nil then
+				return true;
+			end
+		end
+		return a.id < b.id;
+	end,
+	checkKit = function (class,race,align,stat,details)
+		if class[M_DCTKIT.origClass] == 1 then
+			if race[characters[currentID].race] == 1 then
+					if align[M_DCTKIT.alignment(characters[currentID].alignment)] == 1 then
+					if (stat[1] > M_DCTKIT.str)	or (stat[2] > M_DCTKIT.dex)	or (stat[3] > M_DCTKIT.con)
+					or (stat[4] > M_DCTKIT.int)	or (stat[5] > M_DCTKIT.wis)	or (stat[6] > M_DCTKIT.cha) then
+					else
+						table.insert(chargen.class,details);
+					end
+				end
+			end
+		end
+	end,
+	addKitList = function	()
+		local abort = false;	M_DCTKIT.origClass = 0;
+		if createCharScreen:GetCurrentStep() == const.STEP_DUALCLASS_CLASS then
+			for k,v in pairs (M_STRREF.classKitStrRefList) do
+				for x,y in pairs (v) do
+					if x == 0x4000 then
+						for xx,yy in pairs (y[1]) do
+							if	characters[currentID].class == Infinity_FetchString(yy) then
+								M_DCTKIT.origClass = k; M_DCTKIT.origKit = 0x4000;	break; break;	break;
+							end
+						end
+						for xx,yy in pairs (y[3]) do
+							if	characters[currentID].class == Infinity_FetchString(yy) then
+								M_DCTKIT.origClass = k; M_DCTKIT.origKit = 0x4000;	break; break;	break;
+							end
+						end
+					else
+						for xx,yy in pairs (y[2]) do
+							if	characters[currentID].kitDesc == Infinity_FetchString(yy) then
+								%kit_to_kit% M_DCTKIT.origKit = x;	break; break;	break;
+							end
+						end
+						for xx,yy in pairs (y[4]) do
+							if	characters[currentID].kitDesc == Infinity_FetchString(yy) then
+								%kit_to_kit% M_DCTKIT.origKit = x;	break; break;	break;
+							end
+						end
+					end
+				end
+			end
+			if not abort	then
+				local addkit = nil
+				M_DCTKIT.str = tonumber	( string.gsub	(characters[currentID].attr.str.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.dex = tonumber	( string.gsub	(characters[currentID].attr.dex.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.con = tonumber	( string.gsub	(characters[currentID].attr.con.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.int = tonumber	( string.gsub	(characters[currentID].attr.int.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.wis = tonumber	( string.gsub	(characters[currentID].attr.wis.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.cha = tonumber	( string.gsub	(characters[currentID].attr.cha.base, '/[0-9]+', ''), 10 )
+				M_DCTKIT.kitList()
+				table.sort(chargen.class, M_DCTKIT.sortKitList)
+			end
+		end
+	end,~~~~~
+		OUTER_SPRINT list ~~	OUTER_FOR	(i = 1; i < 22; ++i)	BEGIN	OUTER_SPRINT	list ~%list% [%i%] = {},~	END
+		APPEND	~M_DCTKIT.lua~	~~~~~%TAB%kitList = function ()%WNL%%TAB%%TAB%local list = {
+%TAB%%TAB%--%TAB%%TAB%function()	M_DCTKIT.checkKit( -- KIT_LABEL
+%TAB%%TAB%--%TAB%%TAB%{ FIGHTER, CLERIC, MAGE, THIEF, DRUID, RANGER },
+%TAB%%TAB%--%TAB%%TAB%{ CAMPAIGN, HUMAN, ELF, HALF_ELF, DWARF, HALFLING, GNOME, HALF_ORC },
+%TAB%%TAB%--%TAB%%TAB%{ L_G, L_N, L_E, N_G, T_N, N_E, C_G, C_N, C_E }, { STR, DEX, CON, INT, WIS, CHA },
+%TAB%%TAB%--%TAB%%TAB%{ KITLIST.ID, KIT.IDS, NAME.STRREF, DESC.STRREF, FALLEN.STRREF}); end,~~~~~
+		OUTER_FOR	(i = 1; i < NUM_KITS; ++i)	BEGIN
+			ACTION_IF	VARIABLE_IS_SET	$kit(~%i%~)	BEGIN
+				OUTER_SPRINT	class $base(~%i%~)
+				OUTER_SPRINT	kmixed $mixed(~%i%~)
+				OUTER_SPRINT	kdesc $desc(~%i%~)
+				OUTER_SPRINT	label $label(~%i%~)
+				OUTER_FOR	(j = 1; j < 7; ++j)	BEGIN
+					ACTION_IF	VARIABLE_IS_SET	$stat(~%i%~ ~%j%~)	BEGIN
+						OUTER_SET	EVAL ~stat%j%~ = $stat(~%i%~ ~%j%~)
+					END	ELSE	BEGIN
+						OUTER_SET	EVAL ~stat%j%~ = 0
+					END
+				END
+				ACTION_IF	VARIABLE_IS_SET $fallen(~%i%~)	BEGIN
+					OUTER_SET	value = $fallen(~%i%~)
+					OUTER_SPRINT	fallen ~fallen = %value%~
+				END	ELSE	BEGIN
+					OUTER_SPRINT	fallen ~fallen = nil~
+				END
+				OUTER_SPRINT	details ~~~~~{ id = %class%,	kitID = %i%,	name = %kmixed%,	desc = %kdesc%,	%fallen%, }~~~~~
+				OUTER_SPRINT	stat ~~~~~{ %stat1%, %stat2%, %stat3%, %stat4%, %stat5%, %stat6%, }~~~~~
+				OUTER_SPRINT	racelist EVAL $racelist(~%i%~)
+				OUTER_SPRINT	alignlist EVAL $alignlist(~%i%~)
+				OUTER_SPRINT	validlist EVAL $validlist(~%i%~)
+				OUTER_SPRINT	string
+~~~~~%TAB%%TAB%%TAB%function()	M_DCTKIT.checkKit( -- %label%
+%TAB%%TAB%%TAB%%TAB%{%validlist% },
+%TAB%%TAB%%TAB%%TAB%{%racelist% },
+%TAB%%TAB%%TAB%%TAB%{%alignlist% }, %stat%,
+%TAB%%TAB%%TAB%%TAB%%details%); end,~~~~~
+				APPEND	~M_DCTKIT.lua~	~%string%~
+			END
+		END
+		APPEND	~M_DCTKIT.lua~	~%WNL%%TAB%%TAB%}%WNL%%TAB%%TAB%for k,v in pairs (list) do v();	end%WNL%%TAB%end,%WNL%}~
+	END
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	/*	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	*/
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	DEFINE_ACTION_FUNCTION	~COMPONENT$$02~	BEGIN
+		DEFINE_ACTION_FUNCTION	BLANK_CLAB	STR_VAR	file = ~CLABMA01~	BEGIN
+			COPY	~.../inlined.2da~	~override\%file%.2DA~		TEXT_SPRINT	row1 ~	~		TEXT_SPRINT	row2 ~ABILITY~
+				FOR	(j = 1; j < 51; ++j)	BEGIN	TEXT_SPRINT	row1 ~%row1%	%j%~	TEXT_SPRINT	row2 ~%row2%	****~		END
+			APPEND	~%file%.2DA~	~%row1%%WNL%%row2%~
+		END
+		DEFINE_ACTION_FUNCTION	EXTEND_CLAB	STR_VAR	file = ~CLABMA01~	BEGIN
+			COPY_EXISTING	~%file%.2DA~	override
+				COUNT_2DA_COLS	col	TEXT_SPRINT	row ~DUALSLOTS AP_DUALSLT~
+				FOR (j = 2; j < col; ++j)	BEGIN		TEXT_SPRINT row ~%row% ****~	END
+				INSERT_2DA_ROW 0 col ~%row%~	PRETTY_PRINT_2DA
+			BUT_ONLY	IF_EXISTS
+		END
+		LAF	BLANK_CLAB	END	LAF	EXTEND_CLAB	END	OUTER_SET $BONUSUPDATE(~CLABMA01~) = 1
+		COPY_EXISTING	~KITLIST.2DA~	override
+			READ_2DA_ENTRIES_NOW	~READ_KITLIST~	3
+			FOR	(i = 2; i < READ_KITLIST; ++i)	BEGIN
+				PATCH_IF	$READ_KITLIST(~%i%~ ~8~) STR_EQ ~1~	BEGIN
+					PATCH_IF	$READ_KITLIST(~%i%~ ~8~) STR_EQ ~CLABMA01~	BEGIN
+						READ_2DA_ENTRY_FORMER ~READ_KITLIST~	i 9 KITID
+						INNER_ACTION	BEGIN
+							ACTION_IF	!FILE_EXISTS_IN_GAME	~DUALWILD.SPL~	BEGIN
+								COPY_EXISTING	~SPCL122.SPL~	~override\DUALWILD.SPL~	WRITE_LONG	NAME1	~-1~	LPF	DELETE_EFFECT	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALMT~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALFM~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALCM~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 206	target = 1	timing = 9	STR_VAR	resource = ~DUALWILD~	END
+							END	ELSE	BEGIN
+								COPY_EXISTING	~DUALWILD.SPL~	override
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALMT~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALFM~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 177	target = 1	parameter1 = KITID	parameter2 = 9	timing = 1	STR_VAR	resource = ~DUALCM~	END
+									LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 206	target = 1	timing = 9	STR_VAR	resource = ~DUALWILD~	END
+							END
+						END
+					END	ELSE	BEGIN
+						READ_2DA_ENTRY_FORMER ~READ_KITLIST~	i 5 file
+						PATCH_IF	!VARIABLE_IS_SET	$BONUSUPDATE(~%file%~)	BEGIN	SET	$BONUSUPDATE(~%file%~) = 1
+							INNER_ACTION	BEGIN
+								ACTION_IF	!FILE_EXISTS_IN_GAME	~%file%.2DA~	BEGIN	LAF	BLANK_CLAB	STR_VAR file END	END
+								LAF	EXTEND_CLAB	STR_VAR	file	END
+							END
+						END
+					END
+				END
+			END
+		BUT_ONLY
+		LAF	ADD_SPLPROT	INT_VAR	stat = 34	value = ~-1~	relation = 3	RET	LEVEL1_MORE = new_row	END
+		LAF	ADD_SPLPROT	INT_VAR	stat = 68	value = ~-1~	relation = 1	RET	LEVEL2_EQUAL = new_row	END
+		LAF	ADD_SPLPROT	INT_VAR	stat = 68	value = ~-1~	relation = 3	RET	LEVEL2_MORE = new_row	END
+		LAF	ADD_SPLPROT	INT_VAR	stat = 34	value = ~-1~	relation = 1	RET	LEVEL1_EQUAL = new_row	END
+		COPY_EXISTING	~SPCL122.SPL~	~override\DUALSLT.SPL~	WRITE_LONG	NAME1	~-1~	LPF	DELETE_EFFECT	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 326	target = 1	parameter1 = 13	parameter2 = 105	timing = 1	STR_VAR	resource = ~DUALMT~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 326	target = 1	parameter1 = 7	parameter2 = 105	timing = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 326	target = 1	parameter1 = 14	parameter2 = 105	timing = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 206	target = 1	timing = 9	STR_VAR	resource = ~DUALSLT~	END
+		CREATE	EFF	~DUALMT~	WRITE_LONG	0x10	326	WRITE_LONG	0x1c	13	WRITE_LONG	0x20	105	WRITE_SHORT	0x2c	100	WRITE_ASCII	0x30	~DUALMT~
+		COPY_EXISTING	~SPCL122.SPL~	~override\DUALFM.SPL~	WRITE_LONG	NAME1	~-1~	LPF	DELETE_EFFECT	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 0	parameter2 = LEVEL2_EQUAL	duration = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 1	parameter2 = LEVEL2_MORE	duration = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 0	parameter2 = LEVEL1_EQUAL	duration = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 1	parameter2 = LEVEL1_EQUAL	duration = 1	STR_VAR	resource = ~DUALFM~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 42	target = 1	parameter1 = 1	parameter2 = 511	timing = 9	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 206	target = 1	timing = 9	STR_VAR	resource = ~DUALFM~	END
+		CREATE	EFF	~DUALFM~	WRITE_LONG	0x10	326	WRITE_LONG	0x1c	7	WRITE_LONG	0x20	105	WRITE_SHORT	0x2c	100	WRITE_ASCII	0x30	~DUALFM~
+		CREATE	EFF	~DUALCM~	WRITE_LONG	0x10	326	WRITE_LONG	0x1c	14	WRITE_LONG	0x20	105	WRITE_SHORT	0x2c	100	WRITE_ASCII	0x30	~DUALFM~
+		COPY_EXISTING	~SPCL122.SPL~	~override\DUALMT.SPL~	WRITE_LONG	NAME1	~-1~	LPF	DELETE_EFFECT	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 0	parameter2 = LEVEL2_EQUAL	duration = 1	STR_VAR	resource = ~DUALMT~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 1	parameter2 = LEVEL2_EQUAL	duration = 1	STR_VAR	resource = ~DUALMT~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 0	parameter2 = LEVEL1_EQUAL	duration = 1	STR_VAR	resource = ~DUALMT~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 318	target = 1	parameter1 = 1	parameter2 = LEVEL1_MORE	duration = 1	STR_VAR	resource = ~DUALMT~	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 42	target = 1	parameter1 = 1	parameter2 = 511	timing = 9	END
+			LPF	ADD_SPELL_EFFECT	INT_VAR	opcode = 206	target = 1	timing = 9	STR_VAR	resource = ~DUALMT~	END
+	END
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	/*	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	*/
+	/*	------------------------------------------------------------------------------------------------------------------------------------------------------------------	*/
+	DEFINE_ACTION_FUNCTION	~COMPONENT$$03~	BEGIN
+		LAF	EE_CLASS_KIT_REF_LIST	END
+		COPY_EXISTING	~UI.MENU~	override
+			REPLACE_TEXTUALLY	~~~~~\(currentChargenProficiency%w%=%w%nil;?\([ %TAB%%WNL%]*\)currentChargenThiefSkill%w%=%w%nil\)~~~~~
+			~~~~~M_KITPRF.buildProfList(); \1~~~~~
+			REPLACE_TEXTUALLY	~~~~~\(createCharScreen:OnProficiencyPlusMinusButtonClick(%w%chargen\.proficiency\[currentChargenProficiency\]\.id%w%,%w%\(true\|false\)%w%)\)~~~~~
+			~~~~~\1%WNL%%TAB%%TAB%%TAB%%TAB%%TAB%%TAB%M_KITPRF.buildProfList();~~~~~
+			REPLACE_TEXTUALLY	~~~~~\(createCharScreen:OnThiefSkillPlusMinusButtonClick(chargen.thief_skill\[currentChargenThiefSkill\]\.id%w%,%w%\(true\|false\)%w%)\)~~~~~
+			~~~~~\1%WNL%%TAB%%TAB%%TAB%%TAB%%TAB%%TAB%M_KITPRF.buildProfList();~~~~~
+		BUT_ONLY
+		COPY	~.../inlined.lua~	~override\M_KITPRF.lua~
+		APPEND	~M_KITPRF.lua~
+~~~~~M_KITPRF = {
+	buildProfList = function ()
+		local class, classOne, classTwo, classThr, kit, slot = 0, nil, nil, nil, 0x4000, {};
+		if not chargen.levelingUp	then	--	Chargen or Dualclass
+			if createCharScreen:GetCurrentStep() == const.STEP_DUALCLASS_PROFICIENCIES then
+				--	Dualclassing, get chargen values
+				class = chargen.class[currentChargenClass].id
+				kit = M_KITPRF.hardcoded(chargen.class[currentChargenClass].kitID)
+			else
+				--	Chargen, get chargen values
+				class = chargen.class[currentChargenClass].id
+				kit = M_KITPRF.hardcoded(chargen.kit[currentChargenKit].id)
+			end
+		else	--	Level-up, get character values
+			local kitProficiencyDualClassString = 0xf00000 + 968;	--19722
+			local kitProficiencyMultiClassString = 0xf00000 + 1115;	--19721
+			local classtype = 1;	local classdetails = string.match(characters[currentID].proficiencies.details, ".-\n")
+			if (Infinity_FetchString(kitProficiencyDualClassString) .. "\n") == classdetails then
+				classtype = 2;
+			elseif (Infinity_FetchString(kitProficiencyMultiClassString) .. "\n") == classdetails then
+				classtype = 3;
+			end
+			if classtype == 3 then
+				slot = {'first', 'second', 'third'};	--	Mutliclass, look at all classes
+			else
+				slot = {'first'};	-- Single or Dualclass, look only at first/active class
+			end
+			local classInfo = {};	local temp;	local kitList = {};
+			for k,v in pairs (slot) do	
+				if characters[currentID].classlevel[v] ~= nil then
+					temp = string.match(characters[currentID].classlevel[v].details, ".-:")
+					temp = string.gsub(temp, ":$", "")
+					table.insert(classInfo, temp)
+				end
+			end
+			for k,v in ipairs (classInfo) do
+				for x,y in pairs (M_STRREF.classKitStrRefList) do
+					for xx,yy in pairs (y) do
+						for xxx,yyy in pairs (yy[1]) do
+							if Infinity_FetchString(yyy) == v then
+								table.insert(kitList,{x,xx})
+							end
+						end
+					end
+				end
+			end
+			if classtype == 3 then	--	Multiclass
+				for k,v in pairs (kitList) do	--	Multiclass Kit
+					if v[1] == 7 then class = 7; kit = v[2]; break;	end
+					if v[1] == 8 then class = 8; kit = v[2]; break;	end
+					if v[1] == 9 then class = 9; kit = v[2]; break;	end
+					if v[1] == 10 then class = 10; kit = v[2]; break;	end
+					if v[1] == 13 then class = 13; kit = v[2]; break;	end
+					if v[1] == 14 then class = 14; kit = v[2]; break;	end
+					if v[1] == 15 then class = 15; kit = v[2]; break;	end
+					if v[1] == 16 then class = 16; kit = v[2]; break;	end
+					if v[1] == 17 then class = 17; kit = v[2]; break;	end
+					if v[1] == 18 then class = 18; kit = v[2]; break;	end
+				end
+				if class == 0 then	--	Multiclass (Trueclass or Single-class kit)
+					if kitList[1] ~= nil then	classOne = kitList[1][1];	end
+					if kitList[2] ~= nil then	classTwo = kitList[2][1];	end
+					if kitList[3] ~= nil then	classThr = kitList[3][1];	end
+					if classTwo ~= nil then
+						if classOne == 2 then	--	Fighter
+							if classTwo == 1 then	-- Mage
+								if classThr == nil then	class = 7;	--	Fighter/Mage
+								elseif classThr == 3 then	class = 17;	--	Fighter/Mage/Cleric
+								elseif classThr == 4 then	class = 10;	--	Fighter/Mage/Thief
+								end
+							elseif classTwo == 3 then	class = 8;	--	Fighter/Cleric
+							elseif classTwo == 4 then	class = 9; --	Fighter/Thief
+							elseif classTwo == 11 then class = 16;	--	Fighter/Druid
+							end
+						elseif classOne == 3 then	--	Cleric
+							if classTwo == 1 then	class = 14;	--	Cleric/Mage
+							elseif classTwo == 4 then class = 15;	--	Cleric/Thief
+							elseif classTwo == 12	then class  = 18;	--	Cleric/Ranger
+							end
+						elseif classOne == 1 then --	Mage
+							if classTwo == 4 then class = 13;	end	--	Mage/Thief
+						end
+					end
+				end
+			else	--	Single or Dual-class
+				if kitList[1] then
+					class = kitList[1][1];	kit = kitList[1][2];
+				end
+			end
+		end
+		local purge = M_KITPRF.profList(class,kit);
+		for k=#chargen.proficiency, 1, -1 do
+			if chargen.proficiency[k].max == 0 and chargen.proficiency[k].value == 0 then
+				table.remove(chargen.proficiency,k)
+			end
+		end
+		while purge < chargen.extraProficiencySlots do
+			createCharScreen:OnProficiencyPlusMinusButtonClick(0, true)
+		end
+	end,~~~~~
+		ACTION_DEFINE_ARRAY	baseprof BEGIN	0 4 5 6 7 8 9 12 13 14 15 10 11 16 17 18 19 20 21 4 50 59	END
+		//	Mage, Fighter, Cleric, Thief, Bard, Paladin, Fighter/Mage, Fighter/Cleric, Fighter/Thief, Fighter/Mage/Thief, Druid
+		//	Ranger, Mage/Thief, Cleric/Mage, Cleric_Thief, Fighter/Druid, Fighter/Mage/Cleric, Cleric/Ranger, Sorcerer, Monk, Shaman
+		ACTION_PHP_EACH baseprof	AS i => col	BEGIN
+			OUTER_SET	id = i + 0x4000
+			OUTER_SPRINT	$kitids(~%id%~) ~0x4000~
+			OUTER_SET	$class(~%id%~) = i
+			OUTER_SET	$prof(~%id%~) = col
+		END
+		COPY_EXISTING	- ~KITLIST.2DA~	override
+			READ_2DA_ENTRIES_NOW	~READ_KITLIST~	3
+			FOR	(i = 2; i < READ_KITLIST; ++i)	BEGIN
+				SET KITID = (i - 1)
+				PATCH_MATCH $READ_KITLIST(~%i%~ ~9~)	WITH
+					0x40	BEGIN	SET	K_abj = ~%i%~	END	0x80	BEGIN	SET	K_con = ~%i%~	END	0x100		BEGIN	SET	K_div = ~%i%~	END	0x200		BEGIN	SET	K_enc = ~%i%~	END
+					0x400	BEGIN	SET	K_ill = ~%i%~	END	0x800	BEGIN	SET	K_inv = ~%i%~	END	0x1000	BEGIN	SET	K_nec = ~%i%~	END	0x2000	BEGIN	SET	K_alt = ~%i%~	END
+																			0x40000000	BEGIN	SET	K_bar = ~%i%~	END																	0x80000000	BEGIN	SET	K_wld = ~%i%~	END
+					ANY IS_AN_INT	$READ_KITLIST(~%i%~ ~9~)	BEGIN	SET	 $READ_KITLIST(~%i%~ ~9~) &= 0xffffbfff	END
+					DEFAULT
+				END
+				TEXT_SPRINT	$kitids(~%KITID%~) $READ_KITLIST(~%i%~ ~9~)
+				TEXT_SPRINT	$class(~%KITID%~) $READ_KITLIST(~%i%~ ~8~)
+				PATCH_IF	IS_AN_INT	$READ_KITLIST(~%i%~ ~6~)	BEGIN
+					SET	$prof(~%KITID%~) = $READ_KITLIST(~%i%~ ~6~) + 1
+				END	ELSE	BEGIN
+					PATCH_IF	IS_AN_INT	$class(~%KITID%~)	BEGIN
+						SET	c = $class(~%KITID%~)	SET	$prof(~%KITID%~) = $prof(~%c%~)
+					END	ELSE	BEGIN
+						SET	$prof(~%KITID%~) = 0
+					END
+				END
+			END
+		BUT_ONLY
+		APPEND	~M_KITPRF.lua~	~~~~~%TAB%hardcoded = function (k)
+		if (k == 0) or (k == nil) then return 0x4000; end
+		local list = {		[%K_abj%] = 0x40,	[%K_con%] = 0x80,	[%K_div%] = 0x100,	[%K_enc%] = 0x200,	[%K_bar%] = 0x80000000,
+							[%K_ill%] = 0x400,	[%K_inv%] = 0x800,	[%K_nec%] = 0x1000,	[%K_alt%] = 0x2000,	[%K_wld%] = 0x40000000,	}
+		if list[k] ~= nil then	return list[k]; end	return k;
+	end,~~~~~
+		COPY_EXISTING	~WEAPPROF.2da~	~override/WEAPPROF_backup.2da~
+		COPY_EXISTING	~WEAPPROF.2da~	override
+			TEXT_SPRINT	string ~~
+			COUNT_2DA_COLS	cols	READ_2DA_ENTRIES_NOW	~READ_WEAPPROF~	cols
+			FOR	(i = 4; i < cols; ++i)	BEGIN
+				FOR	(j = 0; j < READ_WEAPPROF; ++j)	BEGIN
+					TEXT_SPRINT	name $READ_WEAPPROF(~%j%~ ~2~)
+					TEXT_SPRINT	id $READ_WEAPPROF(~%j%~ ~1~)
+					PATCH_IF	IS_AN_INT id	BEGIN
+						PATCH_IF	id = 0	BEGIN	SET_2DA_ENTRY_LATER	~SET_WEAPPROF~	j i 255	END
+						PATCH_MATCH ~%name%~	WITH ~4294967296~	~-1~	BEGIN	END	DEFAULT
+							PATCH_IF	id > 88	BEGIN	SET	r = id - 88
+								TEXT_SPRINT	$max(~%r%~) $READ_WEAPPROF(~%j%~ ~%i%~)
+								SET_2DA_ENTRY_LATER	~SET_WEAPPROF~	j i 7
+							END
+						END
+					END
+				END
+				TEXT_SPRINT	$list(~%i%~) ~~
+				FOR	(j = 1; j < 46; ++j)	BEGIN
+					PATCH_IF	!VARIABLE_IS_SET	$max(~%j%~)	BEGIN	SET $max(~%j%~) = 0	END
+					TEXT_SPRINT	$list(~%i%~) EVAL ~%list_%i%% %max_%j%%,~
+				END
+			END
+			TEXT_SPRINT	$list(~0~) ~~	FOR	(j = 1; j < 46; ++j)	BEGIN	TEXT_SPRINT	$list(~0~) EVAL ~%list_%i%% 0,~	END
+			SET_2DA_ENTRIES_NOW	~SET_WEAPPROF~	cols
+		BUT_ONLY
+		OUTER_SPRINT classlist ~~~~~%WNL%%TAB%%TAB%%TAB%[0] = {
+%TAB%%TAB%%TAB%%TAB%[0x4000] = { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 2, 2, 2, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+			},~~~~~
+		OUTER_FOR	(c = 1; c < 22; ++c)	BEGIN
+			OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%%TAB%[%c%] = {~
+			ACTION_PHP_EACH	class AS k => x	BEGIN
+				ACTION_IF	(~%c%~ STR_EQ ~%x%~)	BEGIN
+					OUTER_SPRINT	kit $kitids(~%k%~)
+					OUTER_SPRINT	prof $prof(~%k%~)
+					OUTER_SPRINT	list $list(~%prof%~)
+					OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%%TAB%%TAB%[%kit%] = {%list% },~
+				END
+			END
+			OUTER_SPRINT	classlist ~%classlist%%WNL%%TAB%%TAB%%TAB%},~
+		END
+		APPEND	~M_KITPRF.lua~	~~~~~%WNL%%TAB%profList = function (class,kit)%WNL%%TAB%%TAB%local list = {%classlist%%WNL%%TAB%%TAB%}
+		local diff, purge = 0, 0;
+		for k,v in pairs (chargen.proficiency) do
+			chargen.proficiency[k].max = list[class][kit][v.id - 88]
+			diff = v.max - v.min;
+			if diff > 0 then	purge = purge + diff;	end
+		end
+		return purge;
+	end,~~~~~
+		APPEND	~M_KITPRF.lua~	~~~~~}~~~~~
+	END
+END
+
+BEGIN	~Enable Dualclassing into Kits~	DESIGNATED	~0~	LABEL	~DUAL_TO_KIT_PRIMARY~	SUBCOMPONENT ~DUAL_TO_KIT_MENU~
+	LAF	~COMPONENT$$01~	INT_VAR	kit_to_kit = 0	END
+BEGIN	~Enable Dualing Kit to Kit(*)~	DESIGNATED	~3~	LABEL	~DUAL_TO_KIT_FROM_KIT~	SUBCOMPONENT ~DUAL_TO_KIT_MENU~
+	LAF	~COMPONENT$$01~	INT_VAR	kit_to_kit = 1	END
+
+BEGIN	~Grant second-class Specialists their Bonus Spell Slots~	DESIGNATED	~1~	LABEL	~DUAL_TO_KIT_SPECIALIST_SPELL_SLOTS~
+	LAF	~COMPONENT$$02~	END
+	
+BEGIN	~Grant second-class Kits their Proper Proficiency Selection~	DESIGNATED	~2~	LABEL	~DUAL_TO_KIT_SECOND_CLASS_PROFICIENCY~
+	LAF	~COMPONENT$$03~	END
+	
+		
